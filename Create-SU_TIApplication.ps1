@@ -83,7 +83,7 @@ while ($ie.ReadyState -ne 4) { Start-Sleep -Milliseconds 100 }
 $document = $ie.document
 
 If ($SystemUpdateSourcePath) {
-    $suExeURL = $document.links | ? { $_.href.Contains("system_update") -and $_.href.EndsWith(".exe") } | % { $_.href }
+    $suExeURL = $document.links | Where-Object { $_.href.Contains("system_update") -and $_.href.EndsWith(".exe") } | ForEach-Object { $_.href }
     $suExe = $suExeURL.Split('/')[5]
     $suExeVer = $suExe.Split('_')[2].TrimEnd('.exe')
     # Downloading System Update to source location
@@ -91,7 +91,7 @@ If ($SystemUpdateSourcePath) {
 }
 
 If ($ThinInstallerSourcePath) {
-    $tiExeURL = $document.links | ? { $_.href.Contains("thin_installer") -and $_.href.EndsWith(".exe") } | % { $_.href }
+    $tiExeURL = $document.links | Where-Object { $_.href.Contains("thin_installer") -and $_.href.EndsWith(".exe") } | ForEach-Object { $_.href }
     $tiExe = $tiExeURL.Split('/')[5]
     # Downloading Thin Installer to source location
     Invoke-WebRequest -Uri $tiExeURL -OutFile "$ThinInstallerSourcePath\$tiExe"
