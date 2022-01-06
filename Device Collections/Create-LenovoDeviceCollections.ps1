@@ -71,10 +71,11 @@ if ($Models.Count -ne '0') {
         $Schedule = New-CMSchedule -DayOfWeek Monday -Start "2/17/2016 03:00:00 AM"
         $ModelVersion = $Model.Version
 
-        $NewCollection = New-CMDeviceCollection -Name "$ModelVersion" -LimitingCollectionName 'All Systems' -RefreshType Periodic -RefreshSchedule $Schedule
-        $LenovoCollection = Get-CMDeviceCollection -Name "$ModelVersion"
-
-        Move-CMObject -InputObject $LenovoCollection -FolderPath "$Subfolder"
+        if (!(Get-CMDeviceCollection -Name $ModelVersion)) {
+            $NewCollection = New-CMDeviceCollection -Name "$ModelVersion" -LimitingCollectionName 'All Systems' -RefreshType Periodic -RefreshSchedule $Schedule
+            $LenovoCollection = Get-CMDeviceCollection -Name "$ModelVersion"
+            Move-CMObject -InputObject $LenovoCollection -FolderPath "$Subfolder"
+        }
         $CollectionQuery = "Select *  From  SMS_R_System inner join SMS_G_System_COMPUTER_SYSTEM_PRODUCT on SMS_G_System_COMPUTER_SYSTEM_PRODUCT.ResourceId = SMS_R_System.ResourceId where SMS_G_System_COMPUTER_SYSTEM_PRODUCT.Version = ""$ModelVersion"""
         if (!(Get-CMDeviceCollectionQueryMembershipRule -CollectionName $ModelVersion -RuleName $ModelVersion)) {
             Add-CMDeviceCollectionQueryMembershipRule -CollectionName "$ModelVersion" -QueryExpression $CollectionQuery -RuleName $ModelVersion
