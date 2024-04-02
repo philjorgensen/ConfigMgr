@@ -349,7 +349,7 @@ process
             $Script = New-Item -Path $HsaTempDirectory -Name "Install-HSAs.ps1" -ItemType File -Value $InstallHsaScript -Force
 
         }
-        #endregion CREATEHSAINSTALLSCRIPT
+        #endregion
 
         #region MOVECONTENTS
         # Move pack contents to share
@@ -372,7 +372,7 @@ process
         {
             Write-Output "HSA pack contents are already in the specified source location"
         }
-        #endregion MOVECONTENTS
+        #endregion
 
         # Check if connection to ConfigMgr site server has been established
         if (-not $ConnectionEstablished)
@@ -439,7 +439,7 @@ process
         {
             Write-Output "ConfigMgr Package for this HSA Pack already exists"
         }
-        #endregion BUILDCONFIGMGRPKG
+        #endregion
 
         # Clean up
         Write-Output "Removing temp files"
