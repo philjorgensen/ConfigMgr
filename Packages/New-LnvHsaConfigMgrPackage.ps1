@@ -180,7 +180,8 @@ process
                             {
                                 New-Item -Path "$($LogPath)\DISM" -ItemType Directory
                             }
-                            $DISMLog = " /LogLevel:4 /LogPath:`"$LogPath\DISM\$($HSAPackage.hsa).log`""
+                            $HsaLogName = $($HSAPackage.hsa) -replace '\<|\>|:|"|/|\\|\||\?|\*', '_'
+                            $DISMLog = " /LogLevel:4 /LogPath:`"$LogPath\DISM\$HsaLogName.log`""
                         }
                         $DISMArgs = "/Add-ProvisionedAppxPackage /PackagePath:`"$($HSAPackage.JSONPath)\$($HSAPackage.appx)`" /LicensePath:`"$($HSAPackage.JSONPath)\$($HSAPackage.license)`"$($OutDep) /Region:`"All`"$DISMLog"
                         Write-Host "Offline DISM - $($HSAPackage.hsa)"
@@ -190,7 +191,7 @@ process
                         }
                         $DISMArgs = "/Image:$($Drive)\ $($DISMArgs)"
                         Write-Host "$env:windir\system32\Dism.exe $DISMArgs"
-                        Start-Process -FilePath "$env:windir\system32\Dism.exe" -ArgumentList $DISMArgs -Wait
+                        Start-Process -FilePath "$env:windir\system32\Dism.exe" -ArgumentList $DISMArgs -Wait -WindowStyle Hidden
                     }
                 }
                 ##################
@@ -251,7 +252,7 @@ process
                 {
                     $LogPath = "$($Drive)\Windows\Logs"
                     $LogFile = "$LogPath\$($myInvocation.MyCommand)_$($LogDate).log"
-    
+
                     ######################
                     #  START TRANSCRIPT  #
                     ######################
