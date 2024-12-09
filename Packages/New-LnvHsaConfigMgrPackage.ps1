@@ -3,37 +3,48 @@
 
 <#
   .SYNOPSIS
-  Downloads Lenovo HSA pack from the Think Deploy catalog
+  Downloads Lenovo HSA pack from the Think Deploy catalog.
 
   .DESCRIPTION
-  This cmdlet will download the HSA Pack based on the specified machine
-  type to a temporary directory, extract the contents, and move to a ConfigMgr
-  share. A ConfigMgr Package will then be created with necessary fields set.
-  
-  Choose an available pack from the Out-GridView window. If a pack isn't available,
-  script will end.
+  This cmdlet downloads the HSA Pack for a specified machine type to a temporary directory, extracts
+  the contents, and moves them to a ConfigMgr share. A ConfigMgr package is then created with the
+  necessary fields pre-populated.
+
+  Users will select an available HSA pack from an Out-GridView window. If no pack is available,
+  the script will terminate.
 
   .PARAMETER SiteServer
-  Mandaory: True
-
+  The fully qualified domain name (FQDN) of the site server where the ConfigMgr site resides.
 
   .PARAMETER MachineType
-  Mandatory: True
-  First 4 characters of Machine Type Model
+  The first 4 characters of the Lenovo machine type model. This is used to identify the specific HSA pack.
 
   .PARAMETER HsaPackSourceLocation
-  Mandatory: True
-  UNC path to file share where contents will be stored
+  The UNC path to the file share where the HSA pack contents will be stored.
 
   .EXAMPLE
-  New-LnvHsaConfigMgrPackage -SiteServer \\siteserver.corp.com -HsaPackSourceLocation \\fileshare.corp.com\Content\HSAs\Lenovo -MachineType 21DD
+  New-LnvHsaConfigMgrPackage -SiteServer 'siteserver.corp.com' `
+                             -HsaPackSourceLocation '\\fileshare.corp.com\Content\HSAs\Lenovo' `
+                             -MachineType '21DD'
+
+  This example downloads the HSA pack for machine type **21DD** from the Lenovo Think Deploy catalog,
+  stores the contents on the shared UNC path, and creates a new ConfigMgr package on the **siteserver.corp.com**.
 
   .NOTES
-    FileName:    New-LnvHsaConfigMgrPackage.ps1
-    Author:      Philip Jorgensen
-    Created:     2024-3-12
+  FileName:   New-LnvHsaConfigMgrPackage.ps1
+  Author:     Philip Jorgensen
+  Created:    2024-03-12
+  Updated:    2024-12-09 - Updated site code variable to account for multiple SMS providers.
 
+  .INPUTS
+  [string] The SiteServer parameter accepts a fully qualified domain name (FQDN) as input.
+  [string] The MachineType parameter accepts the first 4 characters of a Lenovo machine type model.
+  [string] The HsaPackSourceLocation parameter accepts a valid UNC path as input.
+
+  .OUTPUTS
+  [string] Returns a message indicating success or failure of the HSA pack download and ConfigMgr package creation.
 #>
+
 
 [CmdletBinding(SupportsShouldProcess)]
 param (
@@ -80,7 +91,7 @@ process
     }
 
     $Node = $Catalog.ModelList.Model | Where-Object { $_.Types.Type -eq "$MachineType" }
-        
+
     $HsaPackExists = $Node | Get-Member -MemberType Property | Where-Object { $_.Name -eq "HSA" }
     if ($null -eq $HsaPackExists)
     {
@@ -112,7 +123,7 @@ process
 
         # Variable to store pack executable
         $HsaExe = ($HsaTempDirectory, ".exe" -join "")
-    
+
         # Temp directory to download pack
         Write-Output "Downloading $HsaPackName"
         Invoke-WebRequest -Uri $HsaPackUrl -OutFile $HsaExe -UseBasicParsing
@@ -320,7 +331,7 @@ process
                             Install-HSA -HSAPackage $Package
                         }
                         ElseIf ($FilePresent -or $NamePresent)
-                        { 
+                        {
                             If ($FilePresent)
                             {
                                 $InstallFileArray = @()
@@ -387,8 +398,8 @@ process
             {
                 throw "Failed to import ConfigMgr module"
             }
-            #Connect to ConfigMgr Site 
-            $SiteCode = $(Get-CimInstance -ComputerName $SiteServer -Namespace root/SMS -ClassName SMS_ProviderLocation).SiteCode
+            #Connect to ConfigMgr Site
+            $SiteCode = $(Get-CimInstance -ComputerName $SiteServer -Namespace root/SMS -ClassName SMS_ProviderLocation).SiteCode | Select-Object -Last 1
 
             if (-not(Get-PSDrive $SiteCode))
             {
@@ -397,7 +408,7 @@ process
             }
 
             Set-Location -Path (((Get-PSDrive -PSProvider CMSite -Verbose:$false).Name) + ":")
-        
+
             # Set flag to indicate connection has been established
             $ConnectionEstablished = $true
         }
@@ -405,7 +416,7 @@ process
         #region BUILDCONFIGMGRPKG
         # Check if a ConfigMgr Package already exists
         $PackageExists = Get-CMPackage -Fast | Where-Object { $_.Name -eq ($($Node.Name)) -and $_.Version -eq $HsaPackVersion -and $_.MifFileName -eq "HSA" -and $_.MifName -eq $WindowsVersion }
-    
+
         if (-not($PackageExists))
         {
             # Build ConfigMgr HSA Package
@@ -423,7 +434,7 @@ process
                 MifName     = $WindowsVersion
                 Version     = $HsaPackVersion
             }
-            
+
             # Add conditional parameters based on $WindowsVersion
             if ($WindowsVersion -ne "win10")
             {
@@ -457,5 +468,5 @@ end
     # Disconnect from CM Site
     Write-Output "Disconnecting from $SiteServer"
     Remove-PSDrive -Name $SiteCode -PSProvider CMSite -Force -Verbose
-    Set-Location -Path $StartingLocation  
+    Set-Location -Path $StartingLocation
 }
