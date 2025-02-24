@@ -1,55 +1,67 @@
-# Change this variable to the version you're deploying
-$DeployedVantageVersion = "10.2310.28.0"
-
-$ErrorActionPreference = "Stop"
+# Version of Lenovo Vantage that is being deployed
+$DeployedVantageVersion = [version]"10.2501.15.0"
 
 try
 {
+    # Get the path to the most recent VantageService folder under ProgramFiles(x86)
+    $vantageServicePath = Get-ChildItem -Path "${env:ProgramFiles(x86)}\Lenovo\VantageService" -Directory | Select-Object -Last 1
 
-    If (Get-Service -Name ImControllerService)
+    # Check if the path exists before proceeding
+    if ($vantageServicePath)
     {
-    
-    }
-        
-    If (Get-Service -Name LenovoVantageService)
-    {
-        # Check for older of version of Vantage Service that causes UAC prompt. This is due to an expired certificate.  
-        $minVersion = "3.8.23.0"
-        $path = ${env:ProgramFiles(x86)} + "\Lenovo\VantageService\*\LenovoVantageService.exe"
-        $version = (Get-ChildItem -Path $path).VersionInfo.FileVersion
-            
-        if ([version]$version -le [version]$minVersion)
+        # Find LenovoVantageService.exe in the directory
+        $vantageServiceFile = Get-ChildItem -Path $vantageServicePath.FullName -Filter "LenovoVantageService.exe" -File -Recurse -ErrorAction Stop | Select-Object -Last 1
+
+        if ($vantageServiceFile)
         {
-            
-            Write-Output "Vantage Service outdated."
+            # Extract the version information
+            $serviceVersion = [version]$vantageServiceFile.VersionInfo.FileVersion
         }
-    }
-        
-    # Assume no version is installed
-    $InstalledVersion = $false
-    
-    # For specific Appx version
-    $InstalledVantageVersion = (Get-AppxPackage -Name E046963F.LenovoSettingsforEnterprise -AllUsers).Version
-
-    If ([version]$InstalledVantageVersion -ge [version]$DeployedVantageVersion)
-    {
-        $InstalledVersion = $true
-        
-        # For package name only    
-        # If (Get-AppxPackage -Name E046963F.LenovoSettingsforEnterprise -AllUsers) {
-
-    }
-
-    if ($InstalledVersion)
-    {
-        Write-Host "All Vantage Services and Appx Present"
+        else
+        {
+            $serviceVersion = $null
+            Write-Warning "LenovoVantageService.exe was not found."
+        }
     }
     else
     {
-        # Write-Output "Commercial Vantage is outdated."
+        $serviceVersion = $null
+        Write-Warning "VantageService directory was not found."
+    }
+
+
+    $minServiceVersion = [version]"3.8.23.0"
+    if ($serviceVersion -le $minServiceVersion)
+    {
+        Write-Output "Lenovo Vantage Service is outdated (found version $serviceVersion, required minimum $minServiceVersion)."
+        exit 1
     }
 }
 catch
 {
-    
+    Write-Output "Failed to retrieve Lenovo Vantage Service version. Error: $($_.Exception.Message)"
+    exit 1
+}
+
+# Check for the Lenovo Commercial Vantage APPX package
+try
+{
+    $vantagePackage = Get-AppxPackage -Name E046963F.LenovoSettingsforEnterprise -AllUsers -ErrorAction Stop
+    $installedVersion = [version]$vantagePackage.Version
+
+    if ($installedVersion -ge $DeployedVantageVersion)
+    {
+        Write-Output "Lenovo Commercial Vantage APPX package is up-to-date (installed version: $installedVersion, required version: $DeployedVantageVersion)."
+        exit 0
+    }
+    else
+    {
+        Write-Output "Lenovo Commercial Vantage APPX package is outdated (installed version: $installedVersion, required version: $DeployedVantageVersion)."
+        exit 1
+    }
+}
+catch
+{
+    Write-Output "Failed to detect Lenovo Commercial Vantage APPX package. Error: $($_.Exception.Message)"
+    exit 1
 }
